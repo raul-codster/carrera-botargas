@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrera de Botargas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        #startBtn {
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        #startBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        #resetBtn {
+            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        #resetBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .race-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .lane {
+            position: relative;
+            height: 100px;
+            background: linear-gradient(90deg, 
+                #ffffff 0%, #ffffff 5%, 
+                transparent 5%, transparent 10%);
+            background-size: 40px 100%;
+            margin: 10px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .botarga {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 60px;
+            transition: left 0.1s linear;
+            filter: drop-shadow(3px 3px 3px rgba(0,0,0,0.3));
+            animation: run 0.5s infinite;
+        }
+
+        @keyframes run {
+            0%, 100% { transform: translateY(-50%) rotate(-5deg); }
+            50% { transform: translateY(-55%) rotate(5deg); }
+        }
+
+        .botarga.finished {
+            animation: celebrate 1s ease-in-out infinite;
+        }
+
+        @keyframes celebrate {
+            0%, 100% { transform: translateY(-50%) rotate(0deg) scale(1); }
+            25% { transform: translateY(-60%) rotate(-10deg) scale(1.1); }
+            75% { transform: translateY(-40%) rotate(10deg) scale(1.1); }
+        }
+
+        .finish-line {
+            position: absolute;
+            right: 50px;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background: repeating-linear-gradient(
+                45deg,
+                #000,
+                #000 10px,
+                #fff 10px,
+                #fff 20px
+            );
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 2.5em;
+            margin: 20px 0;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .leaderboard {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .leaderboard h2 {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 2em;
+        }
+
+        .position {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 1.2em;
+        }
+
+        .position.gold {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #333;
+        }
+
+        .position.silver {
+            background: linear-gradient(45deg, #C0C0C0, #808080);
+            color: #333;
+        }
+
+        .position.bronze {
+            background: linear-gradient(45deg, #CD7F32, #8B4513);
+            color: #fff;
+        }
+
+        select {
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 25px;
+            border: none;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .winner-announcement {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            padding: 40px 60px;
+            border-radius: 20px;
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: bold;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: transform 0.5s ease;
+        }
+
+        .winner-announcement.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .audio-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .audio-controls button {
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        .volume-slider {
+            width: 100px;
+            height: 5px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            border-radius: 5px;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: white;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        .volume-slider::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            background: white;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Carrera de Botargas 🏃‍♂️</h1>
+        
+        <div class="controls">
+            <button id="startBtn">Iniciar Carrera</button>
+            <button id="resetBtn">Reiniciar</button>
+            <select id="botargaCount">
+                <option value="3">3 Botargas</option>
+                <option value="4">4 Botargas</option>
+                <option value="5" selected>5 Botargas</option>
+                <option value="6">6 Botargas</option>
+                <option value="8">8 Botargas</option>
+            </select>
+        </div>
+
+        <div class="timer" id="timer">00:00:00</div>
+
+        <div class="race-track" id="raceTrack">
+            <!-- Los carriles se generan dinámicamente -->
+        </div>
+
+        <div class="leaderboard">
+            <h2>🏆 Tabla de Posiciones</h2>
+            <div id="positions"></div>
+        </div>
+    </div>
+
+    <div class="winner-announcement" id="winnerAnnouncement"></div>
+
+    <div class="audio-controls">
+        <button id="muteBtn">🔊</button>
+        <input type="range" id="volumeSlider" class="volume-slider" min="0" max="100" value="70">
+        <span id="volumeLabel">70%</span>
+    </div>
+
+    <script>
+        // Sistema de audio
+        let synth;
+        let bassSynth;
+        let bassLoop;
+        let melodyLoop;
+        let isMuted = false;
+        let volume = -15;
+        let audioInitialized = false;
+
+        // Inicializar Tone.js cuando el usuario interactúe
+        async function initAudio() {
+            if (audioInitialized) return;
+            
+            try {
+                await Tone.start();
+                
+                // Crear sintetizador para la melodía
+                synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "triangle" },
+                    envelope: {
+                        attack: 0.005,
+                        decay: 0.1,
+                        sustain: 0.3,
+                        release: 0.5
+                    }
+                }).toDestination();
+
+                // Crear sintetizador para el bajo
+                bassSynth = new Tone.MonoSynth({
+                    oscillator: { type: "sawtooth" },
+                    envelope: {
+                        attack: 0.01,
+                        decay: 0.2,
+                        sustain: 0.5,
+                        release: 0.5
+                    }
+                }).toDestination();
+
+                // Patrón de bajo para la carrera
+                const bassPattern = [
+                    ["C2", "8n"], ["C2", "8n"], ["G2", "8n"], ["G2", "8n"],
+                    ["A2", "8n"], ["A2", "8n"], ["F2", "8n"], ["F2", "8n"]
+                ];
+
+                // Crear loop del bajo
+                let bassIndex = 0;
+                bassLoop = new Tone.Loop((time) => {
+                    const [note, duration] = bassPattern[bassIndex % bassPattern.length];
+                    bassSynth.triggerAttackRelease(note, duration, time);
+                    bassIndex++;
+                }, "8n");
+
+                // Melodía emocionante para la carrera
+                const melodyPattern = [
+                    ["C5", "16n"], ["E5", "16n"], ["G5", "16n"], ["C6", "16n"],
+                    ["G5", "16n"], ["E5", "16n"], ["C5", "16n"], ["G4", "16n"],
+                    ["A4", "16n"], ["C5", "16n"], ["E5", "16n"], ["A5", "16n"],
+                    ["E5", "16n"], ["C5", "16n"], ["A4", "16n"], ["F4", "16n"]
+                ];
+
+                // Crear loop de la melodía
+                let melodyIndex = 0;
+                melodyLoop = new Tone.Loop((time) => {
+                    const [note, duration] = melodyPattern[melodyIndex % melodyPattern.length];
+                    synth.triggerAttackRelease(note, duration, time);
+                    melodyIndex++;
+                }, "16n");
+
+                // Ajustar volumen inicial
+                synth.volume.value = volume;
+                bassSynth.volume.value = volume - 5;
+                
+                audioInitialized = true;
+                console.log('Audio inicializado correctamente');
+            } catch (error) {
+                console.error('Error al inicializar audio:', error);
+                audioInitialized = false;
+            }
+        }
+
+        // Música de victoria
+        function playVictorySound() {
+            if (isMuted || !audioInitialized || !synth) return;
+            
+            try {
+                const now = Tone.now();
+                // Fanfarria de victoria
+                synth.triggerAttackRelease(["C5", "E5", "G5"], "4n", now);
+                synth.triggerAttackRelease(["D5", "F5", "A5"], "4n", now + 0.3);
+                synth.triggerAttackRelease(["E5", "G5", "B5"], "4n", now + 0.6);
+                synth.triggerAttackRelease(["F5", "A5", "C6"], "2n", now + 0.9);
+            } catch (error) {
+                console.error('Error al reproducir sonido de victoria:', error);
+            }
+        }
+
+        // Iniciar música de carrera
+        async function startRaceMusic() {
+            if (isMuted) return;
+            
+            // Asegurarse de que el audio esté inicializado
+            if (!audioInitialized) {
+                await initAudio();
+            }
+            
+            if (!audioInitialized || !bassLoop || !melodyLoop) {
+                console.log('Audio no disponible');
+                return;
+            }
+            
+            try {
+                Tone.Transport.bpm.value = 140; // Tempo rápido para emoción
+                bassLoop.start(0);
+                melodyLoop.start(0);
+                Tone.Transport.start();
+            } catch (error) {
+                console.error('Error al iniciar música:', error);
+            }
+        }
+
+        // Detener música
+        function stopRaceMusic() {
+            if (!audioInitialized) return;
+            
+            try {
+                Tone.Transport.stop();
+                if (bassLoop) bassLoop.stop();
+                if (melodyLoop) melodyLoop.stop();
+            } catch (error) {
+                console.error('Error al detener música:', error);
+            }
+        }
+
+        // Control de volumen
+        const muteBtn = document.getElementById('muteBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeLabel = document.getElementById('volumeLabel');
+
+        muteBtn.addEventListener('click', () => {
+            isMuted = !isMuted;
+            muteBtn.textContent = isMuted ? '🔇' : '🔊';
+            
+            if (audioInitialized) {
+                Tone.Destination.mute = isMuted;
+            }
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            volumeLabel.textContent = value + '%';
+            
+            // Convertir porcentaje a decibeles (-60 a 0)
+            volume = (value / 100) * 30 - 30;
+            
+            if (synth) {
+                synth.volume.value = volume;
+            }
+            if (bassSynth) {
+                bassSynth.volume.value = volume - 5;
+            }
+        });
+
+        // Configuración del juego
+        const botargaEmojis = ['🐻', '🦊', '🐼', '🦁', '🐯', '🐨', '🐸', '🦄'];
+        const botargaNames = ['Oso', 'Zorro', 'Panda', 'León', 'Tigre', 'Koala', 'Rana', 'Unicornio'];
+        let raceInterval;
+        let timerInterval;
+        let startTime;
+        let botargas = [];
+        let finishOrder = [];
+        let raceInProgress = false;
+
+        // Elementos del DOM
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const raceTrack = document.getElementById('raceTrack');
+        const timer = document.getElementById('timer');
+        const positions = document.getElementById('positions');
+        const botargaCount = document.getElementById('botargaCount');
+        const winnerAnnouncement = document.getElementById('winnerAnnouncement');
+
+        // Inicializar la pista
+        function initializeTrack() {
+            const count = parseInt(botargaCount.value);
+            raceTrack.innerHTML = '';
+            botargas = [];
+            finishOrder = [];
+            
+            for (let i = 0; i < count; i++) {
+                const lane = document.createElement('div');
+                lane.className = 'lane';
+                
+                const botarga = document.createElement('div');
+                botarga.className = 'botarga';
+                botarga.innerHTML = botargaEmojis[i];
+                botarga.dataset.id = i;
+                botarga.dataset.name = botargaNames[i];
+                botarga.style.left = '0px';
+                
+                const finishLine = document.createElement('div');
+                finishLine.className = 'finish-line';
+                
+                lane.appendChild(botarga);
+                lane.appendChild(finishLine);
+                raceTrack.appendChild(lane);
+                
+                botargas.push({
+                    element: botarga,
+                    position: 0,
+                    speed: Math.random() * 3 + 2, // Velocidad aleatoria entre 2 y 5
+                    id: i,
+                    name: botargaNames[i],
+                    emoji: botargaEmojis[i]
+                });
+            }
+            
+            updateLeaderboard();
+        }
+
+        // Iniciar la carrera
+        async function startRace() {
+            if (raceInProgress) return;
+            
+            raceInProgress = true;
+            startBtn.disabled = true;
+            botargaCount.disabled = true;
+            startTime = Date.now();
+            finishOrder = [];
+            
+            // Quitar animación de celebración
+            botargas.forEach(b => b.element.classList.remove('finished'));
+            
+            // Iniciar música de carrera
+            await startRaceMusic();
+            
+            // Iniciar el cronómetro
+            timerInterval = setInterval(updateTimer, 10);
+            
+            // Iniciar el movimiento de las botargas
+            raceInterval = setInterval(moveBotargas, 50);
+        }
+
+        // Mover las botargas
+        function moveBotargas() {
+            const trackWidth = raceTrack.offsetWidth - 150; // Ancho menos margen para la meta
+            let allFinished = true;
+            
+            botargas.forEach(botarga => {
+                if (botarga.position < trackWidth) {
+                    allFinished = false;
+                    // Añadir variabilidad a la velocidad
+                    const speedVariation = (Math.random() - 0.5) * 2;
+                    botarga.position += botarga.speed + speedVariation;
+                    
+                    if (botarga.position >= trackWidth) {
+                        botarga.position = trackWidth;
+                        if (!finishOrder.find(f => f.id === botarga.id)) {
+                            finishOrder.push({
+                                ...botarga,
+                                time: Date.now() - startTime
+                            });
+                            botarga.element.classList.add('finished');
+                        }
+                    }
+                    
+                    botarga.element.style.left = botarga.position + 'px';
+                }
+            });
+            
+            updateLeaderboard();
+            
+            if (allFinished) {
+                endRace();
+            }
+        }
+
+        // Terminar la carrera
+        function endRace() {
+            clearInterval(raceInterval);
+            clearInterval(timerInterval);
+            raceInProgress = false;
+            startBtn.disabled = false;
+            botargaCount.disabled = false;
+            
+            // Detener música de carrera
+            stopRaceMusic();
+            
+            // Mostrar ganador
+            if (finishOrder.length > 0) {
+                showWinner(finishOrder[0]);
+                playVictorySound();
+            }
+        }
+
+        // Mostrar anuncio del ganador
+        function showWinner(winner) {
+            winnerAnnouncement.innerHTML = `
+                <div>${winner.emoji}</div>
+                <div>¡${winner.name} Gana!</div>
+                <div style="font-size: 0.6em">Tiempo: ${formatTime(winner.time)}</div>
+            `;
+            winnerAnnouncement.classList.add('show');
+            
+            setTimeout(() => {
+                winnerAnnouncement.classList.remove('show');
+            }, 3000);
+        }
+
+        // Actualizar el cronómetro
+        function updateTimer() {
+            const elapsed = Date.now() - startTime;
+            timer.textContent = formatTime(elapsed);
+        }
+
+        // Formatear tiempo
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const centiseconds = Math.floor((ms % 1000) / 10);
+            
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${centiseconds.toString().padStart(2, '0')}`;
+        }
+
+        // Actualizar tabla de posiciones
+        function updateLeaderboard() {
+            const sortedBotargas = [...botargas].sort((a, b) => b.position - a.position);
+            positions.innerHTML = '';
+            
+            sortedBotargas.forEach((botarga, index) => {
+                const posDiv = document.createElement('div');
+                posDiv.className = 'position';
+                
+                if (index === 0) posDiv.classList.add('gold');
+                else if (index === 1) posDiv.classList.add('silver');
+                else if (index === 2) posDiv.classList.add('bronze');
+                
+                const finished = finishOrder.find(f => f.id === botarga.id);
+                const timeText = finished ? formatTime(finished.time) : 'En carrera...';
+                
+                posDiv.innerHTML = `
+                    <span>${index + 1}° ${botarga.emoji} ${botarga.name}</span>
+                    <span>${timeText}</span>
+                `;
+                
+                positions.appendChild(posDiv);
+            });
+        }
+
+        // Reiniciar el juego
+        function resetGame() {
+            clearInterval(raceInterval);
+            clearInterval(timerInterval);
+            raceInProgress = false;
+            startBtn.disabled = false;
+            botargaCount.disabled = false;
+            timer.textContent = '00:00:00';
+            
+            // Detener música si está sonando
+            stopRaceMusic();
+            
+            initializeTrack();
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', startRace);
+        resetBtn.addEventListener('click', resetGame);
+        botargaCount.addEventListener('change', resetGame);
+
+        // Inicializar el juego
+        initializeTrack();
+    </script>
+</body>
+</html>
